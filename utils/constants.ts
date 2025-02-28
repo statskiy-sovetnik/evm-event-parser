@@ -1,0 +1,1 @@
+export const MAX_BLOCK_RANGE = 100000;
