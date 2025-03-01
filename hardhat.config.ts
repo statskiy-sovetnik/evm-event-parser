@@ -2,6 +2,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import { Network, RPC } from "./utils/networks";
 import "./tasks/find-events";
+import "./tasks/find-roles";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.28",
