@@ -12,6 +12,7 @@ import {
 } from "../utils/contracts";
 import { EventData, processLog } from "../utils/events";
 import { Contract } from "ethers";
+import { logger } from "../utils/logger";
 
 dotenv.config();
 
@@ -88,7 +89,8 @@ task(
         fromBlock: fromBlockArg,
         toBlock: toBlockArg,
       } = taskArgs;
-      console.log(`Analyzing roles for contract ${contractAddress}...`);
+      logger.section("Contract Analysis");
+      logger.info(`Analyzing roles for contract ${contractAddress}...`);
 
       const provider = hre.ethers.provider;
       let contractAbi: any;
@@ -96,13 +98,11 @@ task(
       if (abiPath) {
         contractAbi = await loadAbiFromFile(abiPath);
       } else {
-        console.log(
-          "No ABI provided, attempting to fetch from block explorer..."
-        );
+        logger.info("No ABI provided, attempting to fetch from block explorer...", 1);
         try {
           contractAbi = await fetchContractAbi(hre, contractAddress);
         } catch (error) {
-          console.error("Failed to fetch ABI:", error);
+          logger.error("Failed to fetch ABI", error);
           throw new Error("Please provide an ABI file with --abi option");
         }
       }
@@ -133,7 +133,9 @@ task(
       }
 
       // Retrieve both RoleGranted and RoleRevoked events
-      console.log("Fetching RoleGranted events...");
+      logger.section("Event Retrieval");
+      
+      logger.info("Fetching RoleGranted events...");
       const grantedLogs = await getEventLogs(
         contract,
         "RoleGranted",
@@ -142,7 +144,7 @@ task(
         hre
       );
 
-      console.log("Fetching RoleRevoked events...");
+      logger.info("Fetching RoleRevoked events...");
       const revokedLogs = await getEventLogs(
         contract,
         "RoleRevoked",
@@ -160,7 +162,7 @@ task(
         revokedLogs.map((log) => processLog(log, provider, "RoleRevoked"))
       );
 
-      console.log(
+      logger.success(
         `Found ${grantedEvents.length} RoleGranted events and ${revokedEvents.length} RoleRevoked events.`
       );
 
@@ -177,7 +179,7 @@ task(
         const account = event.eventParameters.account;
 
         if (!roleIdentifier || !account) {
-          console.warn(
+          logger.warn(
             `Missing role identifier or account in event: ${JSON.stringify(
               event
             )}`
@@ -200,7 +202,7 @@ task(
         const account = event.eventParameters.account;
 
         if (!roleIdentifier || !account) {
-          console.warn(
+          logger.warn(
             `Missing role identifier or account in event: ${JSON.stringify(
               event
             )}`
@@ -246,9 +248,10 @@ task(
 
       fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
       const roleCount = Object.keys(result.roles).length;
-      console.log(
-        `Analysis complete. Found ${roleCount} roles. Results written to ${outputPath}`
-      );
+      
+      logger.section("Analysis Complete");
+      logger.success(`Found ${roleCount} roles`);
+      logger.info(`Results written to ${outputPath}`, 1);
     }
   );
 

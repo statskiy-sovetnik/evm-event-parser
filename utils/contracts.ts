@@ -5,6 +5,7 @@ import axios from "axios";
 import { Contract, EventLog, Log } from "ethers";
 import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE } from "./constants";
 import { ExplorerType, Explorers, Network } from "./networks";
+import { logger } from "./logger";
 
 export async function loadAbiFromFile(abiPath: string): Promise<any> {
   const abiJson = fs.readFileSync(path.resolve(abiPath), "utf8");
@@ -88,7 +89,7 @@ async function fetchAbiFromBlockscout(
       return v2Response.data.abi;
     }
   } catch (error) {
-    console.log("V2 API not available, trying legacy API...");
+    logger.info("V2 API not available, trying legacy API...", 1);
     // Continue to legacy API approach
   }
 
@@ -170,7 +171,7 @@ export async function getContractCreationBlock(
     }
 
     if (txHash) {
-      console.log(`Contract creation transaction hash: ${txHash}`);
+      logger.info(`Contract creation transaction hash: ${txHash}`, 1);
       const tx = await hre.ethers.provider.getTransaction(txHash);
       if (tx && tx.blockNumber) {
         return { 
@@ -180,12 +181,12 @@ export async function getContractCreationBlock(
       }
     }
 
-    console.log(
+    logger.warn(
       "Could not determine contract creation block, using block 0 as default"
     );
     return { blockNumber: 0 };
   } catch (error) {
-    console.error("Error determining contract creation block:", error);
+    logger.error("Error determining contract creation block", error);
     return { blockNumber: 0 };
   }
 }
@@ -255,8 +256,8 @@ async function getContractCreationTxFromBlockscout(
       return response.data.result[0].txHash;
     }
   } catch (error) {
-    console.log(
-      "Failed to get contract creation tx via getcontractcreation endpoint"
+    logger.info(
+      "Failed to get contract creation tx via getcontractcreation endpoint", 1
     );
 
     // Fallback methods if the primary method fails
@@ -270,7 +271,7 @@ async function getContractCreationTxFromBlockscout(
         return v2Response.data.creation_tx_hash;
       }
     } catch (error) {
-      console.log("V2 API fallback failed");
+      logger.info("V2 API fallback failed", 1);
     }
   }
 
@@ -302,7 +303,7 @@ async function getContractCreationTxFromBlockscout(
       return txlistResponse.data.result[0].hash;
     }
   } catch (error) {
-    console.log("Failed to retrieve transactions list for contract");
+    logger.info("Failed to retrieve transactions list for contract", 1);
   }
 
   return undefined;
@@ -340,12 +341,12 @@ export async function getEventLogs(
         const explorerConfig = Explorers[chainId as Network];
         if (explorerConfig && explorerConfig.type === ExplorerType.Blockscout) {
           maxBlockRange = BLOCKSCOUT_MAX_BLOCK_RANGE;
-          console.log(`Using Blockscout-specific block range limit of ${BLOCKSCOUT_MAX_BLOCK_RANGE}`);
+          logger.info(`Using Blockscout-specific block range limit of ${BLOCKSCOUT_MAX_BLOCK_RANGE}`, 1);
         }
       }
     } catch (error) {
       // If there's any error determining the explorer type, fall back to default range
-      console.log(`Could not determine explorer type, using default block range of ${MAX_BLOCK_RANGE}`);
+      logger.info(`Could not determine explorer type, using default block range of ${MAX_BLOCK_RANGE}`, 1);
     }
   }
 
@@ -355,8 +356,8 @@ export async function getEventLogs(
   }
 
   // Otherwise, split into chunks and query in parallel
-  console.log(
-    `Block range too large (${fromBlock} to ${toBlock}), splitting into chunks...`
+  logger.info(
+    `Block range too large (${fromBlock} to ${toBlock}), splitting into chunks...`, 1
   );
 
   const chunks: Array<{ from: number; to: number }> = [];
@@ -369,12 +370,12 @@ export async function getEventLogs(
     current = end + 1;
   }
 
-  console.log(`Querying ${chunks.length} chunks of blocks in parallel...`);
+  logger.info(`Querying ${chunks.length} chunks of blocks in parallel...`, 1);
 
   const chunkResults = await Promise.all(
     chunks.map((chunk) =>
       contract.queryFilter(filter, chunk.from, chunk.to).catch((error) => {
-        console.error(
+        logger.error(
           `Error querying blocks ${chunk.from}-${chunk.to}: ${error.message}`
         );
         return [];
@@ -384,7 +385,7 @@ export async function getEventLogs(
 
   // Flatten results from all chunks
   const allLogs = chunkResults.flat();
-  console.log(`Retrieved ${allLogs.length} total events across all chunks`);
+  logger.info(`Retrieved ${allLogs.length} total events across all chunks`, 1);
 
   return allLogs;
 }
@@ -399,18 +400,20 @@ export async function getBlockParams(
   let fromBlock: number;
   let toBlock: number;
 
+  logger.section("Block Range Configuration");
+
   if (fromBlockArg) {
     // Parse user-provided fromBlock
     fromBlock = fromBlockArg.startsWith("0x")
       ? parseInt(fromBlockArg, 16)
       : parseInt(fromBlockArg);
-    console.log(`Using provided fromBlock: ${fromBlock}`);
+    logger.info(`Using provided fromBlock: ${fromBlock}`);
   } else {
     // Default to contract creation block
-    console.log("Determining contract creation block...");
+    logger.info("Determining contract creation block...");
     const creationInfo = await getContractCreationBlock(hre, contractAddress);
     fromBlock = creationInfo.blockNumber;
-    console.log(`Using contract creation block: ${fromBlock}`);
+    logger.info(`Using contract creation block: ${fromBlock}`);
   }
 
   if (toBlockArg) {
@@ -418,7 +421,7 @@ export async function getBlockParams(
     toBlock = toBlockArg.startsWith("0x")
       ? parseInt(toBlockArg, 16)
       : parseInt(toBlockArg);
-    console.log(`Using provided toBlock: ${toBlock}`);
+    logger.info(`Using provided toBlock: ${toBlock}`);
   } else {
     // Fetch latest finalized block from the blockchain
     try {
@@ -432,12 +435,12 @@ export async function getBlockParams(
       }
 
       toBlock = finalizedBlock.number;
-      console.log(`Using latest finalized block: ${toBlock}`);
+      logger.info(`Using latest finalized block: ${toBlock}`);
     } catch (error) {
       // Fallback to latest as string if we can't get the number
       const latestBlock = await provider.getBlockNumber();
       toBlock = latestBlock;
-      console.log(`Using latest block number: ${toBlock}`);
+      logger.info(`Using latest block number: ${toBlock}`);
     }
   }
 
