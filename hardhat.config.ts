@@ -3,6 +3,8 @@ import "@nomicfoundation/hardhat-toolbox";
 import { Network, RPC } from "./utils/networks";
 import "./tasks/find-events";
 import "./tasks/find-roles";
+import "./tasks/get-proxy-admin";
+import "./tasks/read-slot";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.28",
