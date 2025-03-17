@@ -12,7 +12,8 @@ const config: HardhatUserConfig = {
     arbitrum: getNetworksConfig(Network.Arbitrum),
     polygon: getNetworksConfig(Network.Polygon),
     flare: getNetworksConfig(Network.Flare),
-    bnb: getNetworksConfig(Network.Bnb)
+    bnb: getNetworksConfig(Network.Bnb),
+    soneium: getNetworksConfig(Network.Soneium),
   }
 };
 
