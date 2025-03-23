@@ -3,6 +3,7 @@
 ## Features
 - Find events emitted by a smart contract
 - Find role holders for contracts implementing OpenZeppelin's AccessControl
+- Find creation block and transaction hash for any smart contract
 
 ## Usage - Find Events
 You can run the find-events task from the command line using Hardhat like this:
@@ -64,6 +65,23 @@ The find-roles test verifies the task against a real OpenZeppelin AccessManager 
 1. The task correctly identifies all roles in the contract
 2. All reported role holders actually have their assigned roles (verified with `hasRole()` call)
 3. No false positives are reported
+
+## Usage - Find Creation Block
+You can find the creation block and transaction hash for any smart contract:
+
+``` shell
+npx hardhat find-creation-block --address 0xYourContractAddress --network arbitrum
+```
+
+This task:
+1. Searches for the transaction that created the contract
+2. Returns the creation block number, transaction hash, and creator address
+3. Works with contracts on all supported explorers (Etherscan, Blockscout)
+
+This information is useful for:
+- Setting an optimal starting block for event searches
+- Analyzing contract deployment information
+- Determining who originally deployed a contract
 
 ## Supported networks
 - Ethereum mainnet
