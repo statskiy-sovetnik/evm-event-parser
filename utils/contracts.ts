@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import { Contract, EventLog, Log } from "ethers";
-import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE } from "./constants";
+import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE, SONIC_MAX_BLOCK_RANGE } from "./constants";
 import { ExplorerType, Explorers, Network } from "./networks";
 import { logger } from "./logger";
 
@@ -45,9 +45,26 @@ async function fetchAbiFromEtherscan(
   contractAddress: string,
   explorerConfig: { url: string; apiUrl?: string }
 ): Promise<any> {
-  const apiKey = process.env.ETHERSCAN_API_KEY;
-  if (!apiKey) {
-    throw new Error("ETHERSCAN_API_KEY environment variable not set");
+  // Use network-specific API key if available
+  let apiKey;
+  
+  if (networkName === "linea") {
+    apiKey = process.env.LINEASCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("LINEASCAN_API_KEY environment variable not set");
+    }
+  }
+  else if (networkName === "sonic") {
+    apiKey = process.env.SONICSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("SONICSCAN_API_KEY environment variable not set");
+    }
+  }
+  else {
+    apiKey = process.env.ETHERSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("ETHERSCAN_API_KEY environment variable not set");
+    }
   }
 
   // Use custom API URL if provided, otherwise construct it from the base URL
@@ -196,9 +213,19 @@ async function getContractCreationTxFromEtherscan(
   contractAddress: string,
   explorerConfig: { url: string; apiUrl?: string }
 ): Promise<string | undefined> {
-  const apiKey = process.env.ETHERSCAN_API_KEY;
-  if (!apiKey) {
-    throw new Error("ETHERSCAN_API_KEY environment variable not set");
+  // Use network-specific API key if available
+  let apiKey;
+  
+  if (networkName === "linea") {
+    apiKey = process.env.LINEASCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("LINEASCAN_API_KEY environment variable not set");
+    }
+  } else {
+    apiKey = process.env.ETHERSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("ETHERSCAN_API_KEY environment variable not set");
+    }
   }
 
   // Use custom API URL if provided, otherwise construct it from the base URL
@@ -342,6 +369,12 @@ export async function getEventLogs(
         if (explorerConfig && explorerConfig.type === ExplorerType.Blockscout) {
           maxBlockRange = BLOCKSCOUT_MAX_BLOCK_RANGE;
           logger.info(`Using Blockscout-specific block range limit of ${BLOCKSCOUT_MAX_BLOCK_RANGE}`, 1);
+        }
+        
+        // Apply Sonic-specific block range limit
+        if (chainId === Network.Sonic) {
+          maxBlockRange = SONIC_MAX_BLOCK_RANGE;
+          logger.info(`Using Sonic-specific block range limit of ${SONIC_MAX_BLOCK_RANGE}`, 1);
         }
       }
     } catch (error) {

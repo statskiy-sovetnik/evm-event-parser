@@ -88,12 +88,21 @@ This information is useful for:
 - Arbitrum one
 - Polygon mainnet
 - Flare
-- BNB
+- BNB 
+- Linea
 
 ## Adding a network
 To add support for a new network:
 
 1. Add RPC url to `network.ts`
 2. Update hardhat.config
+
+## Environment Variables
+Create a `.env` file with the following variables:
+```
+ETHERSCAN_API_KEY=your_key_here                # Required for Etherscan-based explorers
+BLOCKSCOUT_API_KEY=your_key_here               # Optional, for Blockscout explorers
+LINEASCAN_API_KEY=your_key_here                # Required for Linea network
+```
 
 
