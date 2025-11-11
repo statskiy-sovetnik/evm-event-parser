@@ -9,6 +9,7 @@ import {
   getBlockParams,
   getEventLogs,
   loadAbiFromFile,
+  getAlternativeRpcUrl,
 } from "../utils/contracts";
 import { EventData, processLog } from "../utils/events";
 import { Contract } from "ethers";
@@ -159,13 +160,20 @@ task(
         hre
       );
 
+      // Get alternative RPC URL for retry logic
+      const alternativeRpc = getAlternativeRpcUrl(hre);
+
       // Process the events
       const grantedEvents: EventData[] = await Promise.all(
-        grantedLogs.map((log) => processLog(log, provider, "RoleGranted"))
+        grantedLogs.map((log) =>
+          processLog(log, provider, "RoleGranted", alternativeRpc)
+        )
       );
 
       const revokedEvents: EventData[] = await Promise.all(
-        revokedLogs.map((log) => processLog(log, provider, "RoleRevoked"))
+        revokedLogs.map((log) =>
+          processLog(log, provider, "RoleRevoked", alternativeRpc)
+        )
       );
 
       logger.success(

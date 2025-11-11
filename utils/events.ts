@@ -1,4 +1,5 @@
 import { EventLog, Log } from "ethers";
+import { withProviderRetry, createProviderOperation } from "./retry";
 
 export interface EventData {
   transactionHash: string;
@@ -11,13 +12,27 @@ export interface EventData {
 export async function processLog(
   log: EventLog | Log,
   provider: any,
-  eventName: string
+  eventName: string,
+  alternativeRpcUrl?: string
 ): Promise<EventData> {
-  const tx = await provider.getTransaction(log.transactionHash);
-  const block = await provider.getBlock(log.blockNumber);
+  const tx = await withProviderRetry(
+    createProviderOperation(provider, (p) =>
+      p.getTransaction(log.transactionHash)
+    ),
+    alternativeRpcUrl,
+    `Get transaction ${log.transactionHash}`
+  );
+
+  const block = await withProviderRetry(
+    createProviderOperation(provider, (p) => p.getBlock(log.blockNumber)),
+    alternativeRpcUrl,
+    `Get block ${log.blockNumber}`
+  );
 
   if (!tx || !block) {
-    throw new Error(`Failed to fetch transaction or block data for tx ${log.transactionHash}`);
+    throw new Error(
+      `Failed to fetch transaction or block data for tx ${log.transactionHash}`
+    );
   }
 
   // Get the args object

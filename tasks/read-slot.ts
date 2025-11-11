@@ -1,6 +1,8 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import dotenv from "dotenv";
+import { getAlternativeRpcUrl } from "../utils/contracts";
+import { withProviderRetry, createProviderOperation } from "../utils/retry";
 
 dotenv.config();
 
@@ -31,10 +33,15 @@ task("read-slot", "Read a storage slot from a contract")
     console.log(`Reading storage slot ${slotHex} from contract ${address} on ${hre.network.name}...`);
 
     const provider = hre.ethers.provider;
+    const alternativeRpc = getAlternativeRpcUrl(hre);
 
     try {
       // Get the data from the specified storage slot
-      const storageData = await provider.getStorage(address, slotHex);
+      const storageData = await withProviderRetry(
+        createProviderOperation(provider, (p) => p.getStorage(address, slotHex)),
+        alternativeRpc,
+        `Get storage at ${slotHex}`
+      );
       
       console.log(`\nRaw Storage Data: ${storageData}`);
       

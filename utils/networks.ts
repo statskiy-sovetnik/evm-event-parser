@@ -9,7 +9,8 @@ export enum Network {
   Soneium = 1868,
   Linea = 59144,
   Flow = 747,
-  Sonic = 146
+  Sonic = 146,
+  Etherlink = 42793,
 }
 
 export enum ExplorerType {
@@ -17,9 +18,15 @@ export enum ExplorerType {
   Blockscout = "blockscout",
 }
 
-export const RPC: { [K in Network]: string } = {
-  [Network.Ethereum]: "https://rpc.payload.de",
-  [Network.Bnb]: "https://bscrpc.com",
+export interface RPCConfig {
+  primary: string;
+  alternatives?: string[];
+}
+
+// Public RPC endpoints (used as fallbacks or when Alchemy is not available)
+const PUBLIC_RPCS: { [K in Network]: string } = {
+  [Network.Ethereum]: "https://eth.rpc.blxrbdn.com",
+  [Network.Bnb]: "https://bsc-mainnet.public.blastapi.io",
   [Network.Arbitrum]: "https://arbitrum.llamarpc.com",
   [Network.Polygon]: "https://polygon.llamarpc.com",
   [Network.Flare]: "https://rpc.ankr.com/flare",
@@ -27,8 +34,80 @@ export const RPC: { [K in Network]: string } = {
   [Network.Soneium]: "https://soneium.drpc.org",
   [Network.Linea]: "https://rpc.linea.build",
   [Network.Flow]: "https://mainnet.evm.nodes.onflow.org",
-  [Network.Sonic]: "https://sonic-rpc.publicnode.com"
+  [Network.Sonic]: "https://sonic-rpc.publicnode.com",
+  [Network.Etherlink]: "https://node.mainnet.etherlink.com",
 };
+
+// Networks supported by Alchemy
+const ALCHEMY_SUPPORTED_NETWORKS = [
+  Network.Ethereum,
+  Network.Bnb,
+  Network.Arbitrum,
+  Network.Polygon,
+  Network.Blast,
+  Network.Soneium,
+  Network.Linea,
+];
+
+// Alchemy RPC URL patterns
+const ALCHEMY_RPC_PATTERNS: { [K in Network]?: string } = {
+  [Network.Ethereum]: "https://eth-mainnet.g.alchemy.com/v2/",
+  [Network.Bnb]: "https://bnb-mainnet.g.alchemy.com/v2/",
+  [Network.Arbitrum]: "https://arb-mainnet.g.alchemy.com/v2/",
+  [Network.Polygon]: "https://polygon-mainnet.g.alchemy.com/v2/",
+  [Network.Blast]: "https://blast-mainnet.g.alchemy.com/v2/",
+  [Network.Soneium]: "https://soneium-mainnet.g.alchemy.com/v2/",
+  [Network.Linea]: "https://linea-mainnet.g.alchemy.com/v2/",
+};
+
+/**
+ * Get RPC configuration for all networks
+ * @param alchemyApiKey - Optional Alchemy API key. If provided, Alchemy will be used as primary RPC for supported networks
+ * @returns RPC configuration object with primary and alternative URLs
+ */
+export function getRPCConfig(alchemyApiKey?: string): { [K in Network]: RPCConfig } {
+  const config: { [K in Network]: RPCConfig } = {} as any;
+
+  for (const network of Object.values(Network)) {
+    if (typeof network === "number") {
+      const networkEnum = network as Network;
+      const publicRpc = PUBLIC_RPCS[networkEnum];
+
+      // Check if network is supported by Alchemy and API key is provided
+      if (alchemyApiKey && ALCHEMY_SUPPORTED_NETWORKS.includes(networkEnum)) {
+        const alchemyPattern = ALCHEMY_RPC_PATTERNS[networkEnum];
+        if (alchemyPattern) {
+          config[networkEnum] = {
+            primary: `${alchemyPattern}${alchemyApiKey}`,
+            alternatives: [publicRpc],
+          };
+        } else {
+          config[networkEnum] = { primary: publicRpc };
+        }
+      } else {
+        // No Alchemy support or no API key - use public RPC only
+        config[networkEnum] = { primary: publicRpc };
+      }
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Get RPC URLs for a specific network
+ * @param network - Network enum value
+ * @param alchemyApiKey - Optional Alchemy API key
+ * @returns Array of RPC URLs [primary, ...alternatives]
+ */
+export function getRPCUrls(network: Network, alchemyApiKey?: string): string[] {
+  const config = getRPCConfig(alchemyApiKey);
+  const networkConfig = config[network];
+  return [networkConfig.primary, ...(networkConfig.alternatives || [])];
+}
+
+// Legacy export for backward compatibility (returns public RPCs)
+export const RPC: { [K in Network]: string } = PUBLIC_RPCS;
 
 export interface ExplorerConfig {
   type: ExplorerType;
@@ -79,5 +158,9 @@ export const Explorers: { [K in Network]: ExplorerConfig } = {
     type: ExplorerType.Etherscan,
     url: "https://sonicscan.org",
     apiUrl: "https://api.sonicscan.org/api"
-  }
+  },
+  [Network.Etherlink]: {
+    type: ExplorerType.Blockscout,
+    url: "https://explorer.etherlink.com",
+  },
 }

@@ -1,1 +1,559 @@
-[{"inputs":[{"internalType":"address","name":"_pythAddress","type":"address"},{"internalType":"address","name":"_proxyPythAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address","name":"target","type":"address"}],"name":"AddressEmptyCode","type":"error"},{"inputs":[],"name":"CooldownDurationNotYetPassed","type":"error"},{"inputs":[{"internalType":"address","name":"implementation","type":"address"}],"name":"ERC1967InvalidImplementation","type":"error"},{"inputs":[],"name":"ERC1967NonPayable","type":"error"},{"inputs":[],"name":"EnforcedPause","type":"error"},{"inputs":[],"name":"ExpectedPause","type":"error"},{"inputs":[],"name":"Expired","type":"error"},{"inputs":[],"name":"FailedCall","type":"error"},{"inputs":[],"name":"FeeBpsExceedsMaximum","type":"error"},{"inputs":[],"name":"Forbidden","type":"error"},{"inputs":[],"name":"InsufficientBalance","type":"error"},{"inputs":[],"name":"InsufficientFeeForPythUpdate","type":"error"},{"inputs":[],"name":"InsufficientLiquidityValue","type":"error"},{"inputs":[],"name":"InsufficientMarketMakerLPShare","type":"error"},{"inputs":[],"name":"InsufficientMintedLP","type":"error"},{"inputs":[],"name":"InsufficientTokenAmount","type":"error"},{"inputs":[],"name":"InsufficientUSDValue","type":"error"},{"inputs":[],"name":"InvalidFloatingPointRepresentation","type":"error"},{"inputs":[],"name":"InvalidInitialization","type":"error"},{"inputs":[],"name":"InvalidOracleConfidenceLevel","type":"error"},{"inputs":[],"name":"InvalidTokenWeights","type":"error"},{"inputs":[],"name":"InvalidTrader","type":"error"},{"inputs":[],"name":"LobDisabled","type":"error"},{"inputs":[],"name":"MarketMakerLPShareExceedsMaximum","type":"error"},{"inputs":[],"name":"MaxLiquidityValueExceeded","type":"error"},{"inputs":[],"name":"MaxOracleAgeExceedsMaximum","type":"error"},{"inputs":[],"name":"NativeGasTokenDisabled","type":"error"},{"inputs":[],"name":"NonPositivePrice","type":"error"},{"inputs":[],"name":"NotInitializing","type":"error"},{"inputs":[],"name":"OracleConfTooHigh","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"inputs":[],"name":"PartiallyPaused","type":"error"},{"inputs":[],"name":"PriceTooBig","type":"error"},{"inputs":[],"name":"PriceTooSmall","type":"error"},{"inputs":[],"name":"ReentrancyGuardReentrantCall","type":"error"},{"inputs":[{"internalType":"uint8","name":"bits","type":"uint8"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"SafeCastOverflowedUintDowncast","type":"error"},{"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"SafeERC20FailedOperation","type":"error"},{"inputs":[],"name":"SlashingUnAvailable","type":"error"},{"inputs":[],"name":"TokenDisabled","type":"error"},{"inputs":[],"name":"TokenWeightExceeded","type":"error"},{"inputs":[],"name":"TransferFailed","type":"error"},{"inputs":[],"name":"UUPSUnauthorizedCallContext","type":"error"},{"inputs":[{"internalType":"bytes32","name":"slot","type":"bytes32"}],"name":"UUPSUnsupportedProxiableUUID","type":"error"},{"inputs":[],"name":"UnknownLob","type":"error"},{"inputs":[],"name":"WrongNumber","type":"error"},{"inputs":[],"name":"WrongTokenId","type":"error"},{"inputs":[],"name":"ZeroAddress","type":"error"},{"inputs":[],"name":"ZeroAmount","type":"error"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"dynamicFeesEnabled","type":"bool"},{"indexed":false,"internalType":"uint16","name":"adminMintLPFeeBps","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"adminBurnLPFeeBps","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"feeBasisBps","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"taxBasisPoints","type":"uint16"},{"indexed":false,"internalType":"address","name":"adminFeeRecipient","type":"address"},{"indexed":false,"internalType":"uint16","name":"perfFeeBps","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"adminPerfFeeBps","type":"uint16"},{"indexed":false,"internalType":"uint24","name":"cooldownDuration","type":"uint24"},{"indexed":false,"internalType":"uint128","name":"minLiquidityValueUsd","type":"uint128"},{"indexed":false,"internalType":"uint128","name":"maxLiquidityValueUsd","type":"uint128"},{"indexed":false,"internalType":"bool","name":"marketMakerLPShareEnabled","type":"bool"},{"indexed":false,"internalType":"uint16","name":"marketMakerLPShareBps","type":"uint16"},{"indexed":false,"internalType":"bool","name":"nativeTokenEnabled","type":"bool"},{"indexed":false,"internalType":"uint8","name":"nativeTokenTokenId","type":"uint8"},{"indexed":false,"internalType":"uint16","name":"maxOracleAge","type":"uint16"},{"indexed":false,"internalType":"uint24","name":"priceValidityPeriod","type":"uint24"},{"indexed":false,"internalType":"uint64","name":"baseMultiplier","type":"uint64"},{"indexed":false,"internalType":"uint64","name":"maxAllowedPriceDeviation","type":"uint64"}],"name":"ConfigSet","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint64","name":"version","type":"uint64"}],"name":"Initialized","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokenUSDValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalUSDValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"protocolFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"mintedLP","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"accountLpShares","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalSupply","type":"uint256"}],"name":"LiquidityAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"lpUSDValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalUSDValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"protocolFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"burnedLP","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"accountLpShares","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalSupply","type":"uint256"}],"name":"LiquidityRemoved","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint8","name":"lobId","type":"uint8"},{"indexed":false,"internalType":"address","name":"lobAddress","type":"address"},{"indexed":false,"internalType":"bool","name":"isActive","type":"bool"},{"indexed":false,"internalType":"uint8","name":"tokenIdX","type":"uint8"},{"indexed":false,"internalType":"uint8","name":"tokenIdY","type":"uint8"},{"indexed":false,"internalType":"uint16","name":"maxOrderDistanceBps","type":"uint16"}],"name":"LobChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"marketMaker","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalSupply","type":"uint256"}],"name":"MakersSharesSlashed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"marketMaker","type":"address"},{"indexed":false,"internalType":"bool","name":"isActive","type":"bool"}],"name":"MarketMakerChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Paused","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"newPauser","type":"address"},{"indexed":false,"internalType":"address","name":"oldPauser","type":"address"}],"name":"PauserChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"oldPendingMarketMaker","type":"address"},{"indexed":false,"internalType":"address","name":"newPendingMarketMaker","type":"address"}],"name":"PendingPrimaryMarketMakerChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"currentPrice","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"previousHWM","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"adminFeeAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"marketMakerFeeAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalSupply","type":"uint256"}],"name":"PerformanceFeesDistributed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"oldMarketMaker","type":"address"},{"indexed":false,"internalType":"address","name":"newMarketMaker","type":"address"}],"name":"PrimaryMarketMakerChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"status","type":"bool"}],"name":"SlashingAvailableStatusChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenBalance","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokenReserved","type":"uint256"}],"name":"Sync","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint8","name":"tokenId","type":"uint8"},{"indexed":false,"internalType":"address","name":"tokenAddress","type":"address"},{"indexed":false,"internalType":"bool","name":"isActive","type":"bool"},{"indexed":false,"internalType":"uint16","name":"targetWeight","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"lowerBoundWeight","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"upperBoundWeight","type":"uint16"},{"indexed":false,"internalType":"uint8","name":"decimals","type":"uint8"},{"indexed":false,"internalType":"uint24","name":"oracleConfRel","type":"uint24"},{"indexed":false,"internalType":"bytes32","name":"oraclePriceId","type":"bytes32"}],"name":"TokenChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Unpaused","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},{"inputs":[],"name":"UPGRADE_INTERFACE_VERSION","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"acceptOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"acceptPrimaryMarketMaker","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint8","name":"tokenId","type":"uint8"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"minUsdValue","type":"uint256"},{"internalType":"uint256","name":"minLPMinted","type":"uint256"},{"internalType":"uint256","name":"expires","type":"uint256"},{"internalType":"bytes[]","name":"priceUpdateData","type":"bytes[]"}],"name":"addLiquidity","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint8","name":"lobId","type":"uint8"},{"internalType":"uint8","name":"tokenId","type":"uint8"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approveForLOB","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"lobAddress","type":"address"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"uint8","name":"tokenIdX","type":"uint8"},{"internalType":"uint8","name":"tokenIdY","type":"uint8"},{"internalType":"uint16","name":"maxOrderDistanceBps","type":"uint16"}],"name":"changeLob","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"marketMaker","type":"address"},{"internalType":"bool","name":"isActive","type":"bool"}],"name":"changeMarketMaker","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"pauser_","type":"address"}],"name":"changePauser","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_primaryMarketMaker","type":"address"}],"name":"changePendingPrimaryMarketMaker","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_tokenAddress","type":"address"},{"internalType":"bool","name":"_isActive","type":"bool"},{"internalType":"uint16","name":"_targetWeight","type":"uint16"},{"internalType":"uint16","name":"_lowerBoundWeight","type":"uint16"},{"internalType":"uint16","name":"_upperBoundWeight","type":"uint16"},{"internalType":"uint8","name":"_decimals","type":"uint8"},{"internalType":"uint24","name":"_oracleConfRel","type":"uint24"},{"internalType":"bytes32","name":"_oraclePriceId","type":"bytes32"}],"name":"changeToken","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"checkCooldown","outputs":[],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"lobId","type":"uint8"},{"internalType":"uint64","name":"orderId","type":"uint64"},{"internalType":"bool","name":"onlyClaim","type":"bool"},{"internalType":"uint256","name":"expires","type":"uint256"}],"name":"claimOrder","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"collectFees","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"disableSlashingStatus","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"ensureNotPartiallyPaused","outputs":[],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getConfig","outputs":[{"components":[{"internalType":"bool","name":"dynamicFeesEnabled","type":"bool"},{"internalType":"uint16","name":"adminMintLPFeeBps","type":"uint16"},{"internalType":"uint16","name":"adminBurnLPFeeBps","type":"uint16"},{"internalType":"uint16","name":"feeBasisBps","type":"uint16"},{"internalType":"uint16","name":"taxBasisBps","type":"uint16"},{"internalType":"uint16","name":"perfFeeBps","type":"uint16"},{"internalType":"uint16","name":"adminPerfFeeBps","type":"uint16"},{"internalType":"address","name":"adminFeeRecipient","type":"address"}],"internalType":"struct FeeConfig","name":"feeConfig","type":"tuple"},{"components":[{"internalType":"uint24","name":"cooldownDuration","type":"uint24"},{"internalType":"uint128","name":"minLiquidityValueUsd","type":"uint128"},{"internalType":"uint128","name":"maxLiquidityValueUsd","type":"uint128"}],"internalType":"struct LiquidityConfig","name":"liquidityConfig","type":"tuple"},{"components":[{"internalType":"bool","name":"marketMakerLPShareEnabled","type":"bool"},{"internalType":"uint16","name":"marketMakerLPShareBps","type":"uint16"}],"internalType":"struct MarketMakerConfig","name":"mmConfig","type":"tuple"},{"components":[{"internalType":"bool","name":"enabled","type":"bool"},{"internalType":"uint8","name":"tokenId","type":"uint8"}],"internalType":"struct NativeTokenConfig","name":"nativeConfig","type":"tuple"},{"components":[{"internalType":"uint16","name":"maxOracleAge","type":"uint16"},{"internalType":"uint24","name":"priceValidityPeriod","type":"uint24"},{"internalType":"uint64","name":"baseMultiplier","type":"uint64"},{"internalType":"uint64","name":"maxAllowedPriceDeviation","type":"uint64"}],"internalType":"struct PriceConfig","name":"priceConfig","type":"tuple"},{"internalType":"bool","name":"slashingStatus","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"totalValue","type":"uint256"},{"internalType":"uint256","name":"initialTokenValue","type":"uint256"},{"internalType":"uint256","name":"nextTokenValue","type":"uint256"},{"internalType":"uint16","name":"targetTokenWeight","type":"uint16"}],"name":"getFeeBasisPoints","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"tokenId","type":"uint8"}],"name":"getPriceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"int32","name":"","type":"int32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTokensCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"hwmLPPrice","outputs":[{"internalType":"uint96","name":"","type":"uint96"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_owner","type":"address"},{"internalType":"address","name":"_liquidityToken","type":"address"},{"internalType":"address","name":"_adminFeeRecipient","type":"address"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"lastAddedAt","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"liquidityToken","outputs":[{"internalType":"contract LPToken","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"","type":"uint8"}],"name":"lobReservesByTokenId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"lobs","outputs":[{"internalType":"address","name":"lobAddress","type":"address"},{"internalType":"uint8","name":"tokenIdX","type":"uint8"},{"internalType":"uint8","name":"tokenIdY","type":"uint8"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"uint16","name":"maxOrderDistanceBps","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"marketMakers","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"paused","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pauser","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingOwner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingPrimaryMarketMaker","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"lobId","type":"uint8"},{"internalType":"bool","name":"isAsk","type":"bool"},{"internalType":"uint128","name":"quantity","type":"uint128"},{"internalType":"uint72","name":"price","type":"uint72"},{"internalType":"uint128","name":"maxCommission","type":"uint128"},{"internalType":"bool","name":"marketOnly","type":"bool"},{"internalType":"bool","name":"postOnly","type":"bool"},{"internalType":"uint256","name":"expires","type":"uint256"},{"internalType":"bytes[]","name":"priceUpdateData","type":"bytes[]"}],"name":"placeOrder","outputs":[{"internalType":"uint64","name":"orderId","type":"uint64"}],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"primaryMarketMaker","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"proxiableUUID","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"tokenId","type":"uint8"},{"internalType":"uint256","name":"burnLP","type":"uint256"},{"internalType":"uint256","name":"minUsdValue","type":"uint256"},{"internalType":"uint256","name":"minTokenGet","type":"uint256"},{"internalType":"uint256","name":"expires","type":"uint256"},{"internalType":"bytes[]","name":"priceUpdateData","type":"bytes[]"}],"name":"removeLiquidity","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"bool","name":"dynamicFeesEnabled","type":"bool"},{"internalType":"uint16","name":"adminMintLPFeeBps","type":"uint16"},{"internalType":"uint16","name":"adminBurnLPFeeBps","type":"uint16"},{"internalType":"uint16","name":"feeBasisBps","type":"uint16"},{"internalType":"uint16","name":"taxBasisBps","type":"uint16"},{"internalType":"uint16","name":"perfFeeBps","type":"uint16"},{"internalType":"uint16","name":"adminPerfFeeBps","type":"uint16"},{"internalType":"address","name":"adminFeeRecipient","type":"address"}],"internalType":"struct FeeConfig","name":"feeConfig","type":"tuple"},{"components":[{"internalType":"uint24","name":"cooldownDuration","type":"uint24"},{"internalType":"uint128","name":"minLiquidityValueUsd","type":"uint128"},{"internalType":"uint128","name":"maxLiquidityValueUsd","type":"uint128"}],"internalType":"struct LiquidityConfig","name":"liquidityConfig","type":"tuple"},{"components":[{"internalType":"bool","name":"marketMakerLPShareEnabled","type":"bool"},{"internalType":"uint16","name":"marketMakerLPShareBps","type":"uint16"}],"internalType":"struct MarketMakerConfig","name":"mmConfig","type":"tuple"},{"components":[{"internalType":"bool","name":"enabled","type":"bool"},{"internalType":"uint8","name":"tokenId","type":"uint8"}],"internalType":"struct NativeTokenConfig","name":"nativeConfig","type":"tuple"},{"components":[{"internalType":"uint16","name":"maxOracleAge","type":"uint16"},{"internalType":"uint24","name":"priceValidityPeriod","type":"uint24"},{"internalType":"uint64","name":"baseMultiplier","type":"uint64"},{"internalType":"uint64","name":"maxAllowedPriceDeviation","type":"uint64"}],"internalType":"struct PriceConfig","name":"priceConfig","type":"tuple"}],"name":"setConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"slashMakersShares","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tokens","outputs":[{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"uint16","name":"targetWeight","type":"uint16"},{"internalType":"uint16","name":"lowerBoundWeight","type":"uint16"},{"internalType":"uint16","name":"upperBoundWeight","type":"uint16"},{"internalType":"uint8","name":"decimals","type":"uint8"},{"internalType":"uint24","name":"oracleConfRel","type":"uint24"},{"internalType":"bytes32","name":"oraclePriceId","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalWeight","outputs":[{"internalType":"uint24","name":"","type":"uint24"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"unpause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"bytes[]","name":"priceUpdateData","type":"bytes[]"}],"name":"validateLPPriceAndDistributeFees","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"validateMarketMakerLPShare","outputs":[],"stateMutability":"view","type":"function"},{"stateMutability":"payable","type":"receive"}]
+[
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            },
+            {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "symbol",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "Approval",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "previousAdminRole",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "newAdminRole",
+                "type": "bytes32"
+            }
+        ],
+        "name": "RoleAdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "Transfer",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "DEFAULT_ADMIN_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "MINTER",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            }
+        ],
+        "name": "allowance",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "approve",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "burn",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "burnFrom",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+            {
+                "internalType": "uint8",
+                "name": "",
+                "type": "uint8"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "subtractedValue",
+                "type": "uint256"
+            }
+        ],
+        "name": "decreaseAllowance",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRoleAdmin",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "hasRole",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "addedValue",
+                "type": "uint256"
+            }
+        ],
+        "name": "increaseAllowance",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "renounceRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes4",
+                "name": "interfaceId",
+                "type": "bytes4"
+            }
+        ],
+        "name": "supportsInterface",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "transfer",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]

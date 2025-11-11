@@ -4,12 +4,82 @@ import path from "path";
 import axios from "axios";
 import { Contract, EventLog, Log } from "ethers";
 import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE, SONIC_MAX_BLOCK_RANGE } from "./constants";
-import { ExplorerType, Explorers, Network } from "./networks";
+import { ExplorerType, Explorers, Network, getRPCUrls } from "./networks";
 import { logger } from "./logger";
+import { withProviderRetry, withHttpRetry, createProviderOperation } from "./retry";
 
 export async function loadAbiFromFile(abiPath: string): Promise<any> {
   const abiJson = fs.readFileSync(path.resolve(abiPath), "utf8");
   return JSON.parse(abiJson);
+}
+
+/**
+ * Helper: Get the appropriate API key for a network
+ * @param networkName - Name of the network
+ * @returns API key for the network
+ */
+function getApiKeyForNetwork(networkName: string): string {
+  let apiKey: string | undefined;
+
+  if (networkName === "linea") {
+    apiKey = process.env.LINEASCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("LINEASCAN_API_KEY environment variable not set");
+    }
+  } else if (networkName === "sonic") {
+    apiKey = process.env.SONICSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("SONICSCAN_API_KEY environment variable not set");
+    }
+  } else if (networkName === "bnb") {
+    apiKey = process.env.BSCSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("BSCSCAN_API_KEY environment variable not set");
+    }
+  } else {
+    apiKey = process.env.ETHERSCAN_API_KEY;
+    if (!apiKey) {
+      throw new Error("ETHERSCAN_API_KEY environment variable not set");
+    }
+  }
+
+  return apiKey;
+}
+
+/**
+ * Helper: Get the API URL for an explorer
+ * @param explorerConfig - Explorer configuration
+ * @returns API URL
+ */
+function getExplorerApiUrl(explorerConfig: { url: string; apiUrl?: string }): string {
+  return explorerConfig.apiUrl || `${explorerConfig.url.replace(/\/$/, "")}/api`;
+}
+
+/**
+ * Helper: Validate Etherscan API response
+ * @param response - Axios response from Etherscan API
+ * @returns True if response is successful
+ */
+function isEtherscanResponseSuccess(response: any): boolean {
+  return response.data.status === "1";
+}
+
+/**
+ * Helper: Get alternative RPC URL for a network (for retry logic)
+ * @param hre - Hardhat Runtime Environment
+ * @returns Alternative RPC URL or undefined if not available
+ */
+export function getAlternativeRpcUrl(
+  hre: HardhatRuntimeEnvironment
+): string | undefined {
+  const chainId = hre.network.config.chainId;
+  if (!chainId) return undefined;
+
+  const alchemyApiKey = process.env.ALCHEMY_API_KEY;
+  const rpcUrls = getRPCUrls(chainId as Network, alchemyApiKey);
+
+  // Return the second URL (alternative) if it exists
+  return rpcUrls.length > 1 ? rpcUrls[1] : undefined;
 }
 
 export async function fetchContractAbi(
@@ -45,42 +115,23 @@ async function fetchAbiFromEtherscan(
   contractAddress: string,
   explorerConfig: { url: string; apiUrl?: string }
 ): Promise<any> {
-  // Use network-specific API key if available
-  let apiKey;
-  
-  if (networkName === "linea") {
-    apiKey = process.env.LINEASCAN_API_KEY;
-    if (!apiKey) {
-      throw new Error("LINEASCAN_API_KEY environment variable not set");
-    }
-  }
-  else if (networkName === "sonic") {
-    apiKey = process.env.SONICSCAN_API_KEY;
-    if (!apiKey) {
-      throw new Error("SONICSCAN_API_KEY environment variable not set");
-    }
-  }
-  else {
-    apiKey = process.env.ETHERSCAN_API_KEY;
-    if (!apiKey) {
-      throw new Error("ETHERSCAN_API_KEY environment variable not set");
-    }
-  }
+  const apiKey = getApiKeyForNetwork(networkName);
+  const apiUrl = getExplorerApiUrl(explorerConfig);
 
-  // Use custom API URL if provided, otherwise construct it from the base URL
-  const apiUrl =
-    explorerConfig.apiUrl || `${explorerConfig.url.replace(/\/$/, "")}/api`;
+  const response = await withHttpRetry(
+    () =>
+      axios.get(apiUrl, {
+        params: {
+          module: "contract",
+          action: "getabi",
+          address: contractAddress,
+          apikey: apiKey,
+        },
+      }),
+    `Fetch ABI from Etherscan (${networkName})`
+  );
 
-  const response = await axios.get(apiUrl, {
-    params: {
-      module: "contract",
-      action: "getabi",
-      address: contractAddress,
-      apikey: apiKey,
-    },
-  });
-
-  if (response.data.status === "1") {
+  if (isEtherscanResponseSuccess(response)) {
     return JSON.parse(response.data.result);
   }
 
@@ -91,15 +142,13 @@ async function fetchAbiFromBlockscout(
   contractAddress: string,
   explorerConfig: { url: string; apiUrl?: string }
 ): Promise<any> {
-  // Blockscout typically doesn't require an API key for basic contract queries
-
-  // Use custom API URL if provided, otherwise construct it from the base URL
   const baseUrl = explorerConfig.url.replace(/\/$/, "");
 
   try {
     // Try the v2 API first (newer Blockscout versions)
-    const v2Response = await axios.get(
-      `${baseUrl}/api/v2/smart-contracts/${contractAddress}`
+    const v2Response = await withHttpRetry(
+      () => axios.get(`${baseUrl}/api/v2/smart-contracts/${contractAddress}`),
+      "Fetch ABI from Blockscout v2 API"
     );
 
     if (v2Response.data && v2Response.data.abi) {
@@ -112,7 +161,6 @@ async function fetchAbiFromBlockscout(
 
   try {
     // Try legacy API format
-    // Some Blockscout instances use apiKey, others don't
     const params: any = {
       module: "contract",
       action: "getabi",
@@ -124,7 +172,10 @@ async function fetchAbiFromBlockscout(
       params.apikey = process.env.BLOCKSCOUT_API_KEY;
     }
 
-    const response = await axios.get(`${baseUrl}/api`, { params });
+    const response = await withHttpRetry(
+      () => axios.get(`${baseUrl}/api`, { params }),
+      "Fetch ABI from Blockscout legacy API"
+    );
 
     if (response.data.status === "1" && response.data.result) {
       return JSON.parse(response.data.result);
@@ -189,11 +240,20 @@ export async function getContractCreationBlock(
 
     if (txHash) {
       logger.info(`Contract creation transaction hash: ${txHash}`, 1);
-      const tx = await hre.ethers.provider.getTransaction(txHash);
+
+      const alternativeRpc = getAlternativeRpcUrl(hre);
+      const tx = await withProviderRetry(
+        createProviderOperation(hre.ethers.provider, (provider) =>
+          provider.getTransaction(txHash)
+        ),
+        alternativeRpc,
+        "Get contract creation transaction"
+      );
+
       if (tx && tx.blockNumber) {
-        return { 
+        return {
           blockNumber: tx.blockNumber,
-          txHash 
+          txHash,
         };
       }
     }
@@ -213,36 +273,24 @@ async function getContractCreationTxFromEtherscan(
   contractAddress: string,
   explorerConfig: { url: string; apiUrl?: string }
 ): Promise<string | undefined> {
-  // Use network-specific API key if available
-  let apiKey;
-  
-  if (networkName === "linea") {
-    apiKey = process.env.LINEASCAN_API_KEY;
-    if (!apiKey) {
-      throw new Error("LINEASCAN_API_KEY environment variable not set");
-    }
-  } else {
-    apiKey = process.env.ETHERSCAN_API_KEY;
-    if (!apiKey) {
-      throw new Error("ETHERSCAN_API_KEY environment variable not set");
-    }
-  }
+  const apiKey = getApiKeyForNetwork(networkName);
+  const apiUrl = getExplorerApiUrl(explorerConfig);
 
-  // Use custom API URL if provided, otherwise construct it from the base URL
-  const apiUrl =
-    explorerConfig.apiUrl || `${explorerConfig.url.replace(/\/$/, "")}/api`;
-
-  const response = await axios.get(apiUrl, {
-    params: {
-      module: "contract",
-      action: "getcontractcreation",
-      contractaddresses: contractAddress,
-      apikey: apiKey,
-    },
-  });
+  const response = await withHttpRetry(
+    () =>
+      axios.get(apiUrl, {
+        params: {
+          module: "contract",
+          action: "getcontractcreation",
+          contractaddresses: contractAddress,
+          apikey: apiKey,
+        },
+      }),
+    `Get contract creation tx from Etherscan (${networkName})`
+  );
 
   if (
-    response.data.status === "1" &&
+    isEtherscanResponseSuccess(response) &&
     response.data.result &&
     response.data.result.length > 0
   ) {
@@ -271,27 +319,30 @@ async function getContractCreationTxFromBlockscout(
       params.apikey = process.env.BLOCKSCOUT_API_KEY;
     }
 
-    const response = await axios.get(`${baseUrl}/api`, { params });
+    const response = await withHttpRetry(
+      () => axios.get(`${baseUrl}/api`, { params }),
+      "Get contract creation tx from Blockscout"
+    );
 
     if (
       response.data.status === "1" &&
       response.data.result &&
       response.data.result.length > 0
     ) {
-      // According to docs, the response format is:
-      // { "status": "1", "message": "OK", "result": [ { "contractAddress": "0x...", "contractCreator": "0x...", "txHash": "0x..." } ] }
       return response.data.result[0].txHash;
     }
   } catch (error) {
     logger.info(
-      "Failed to get contract creation tx via getcontractcreation endpoint", 1
+      "Failed to get contract creation tx via getcontractcreation endpoint",
+      1
     );
 
     // Fallback methods if the primary method fails
     try {
       // Try the v2 API as a fallback
-      const v2Response = await axios.get(
-        `${baseUrl}/api/v2/smart-contracts/${contractAddress}`
+      const v2Response = await withHttpRetry(
+        () => axios.get(`${baseUrl}/api/v2/smart-contracts/${contractAddress}`),
+        "Get contract creation tx from Blockscout v2 API"
       );
 
       if (v2Response.data && v2Response.data.creation_tx_hash) {
@@ -318,9 +369,10 @@ async function getContractCreationTxFromBlockscout(
       txlistParams.apikey = process.env.BLOCKSCOUT_API_KEY;
     }
 
-    const txlistResponse = await axios.get(`${baseUrl}/api`, {
-      params: txlistParams,
-    });
+    const txlistResponse = await withHttpRetry(
+      () => axios.get(`${baseUrl}/api`, { params: txlistParams }),
+      "Get transactions list from Blockscout"
+    );
 
     if (
       txlistResponse.data.status === "1" &&
@@ -383,9 +435,23 @@ export async function getEventLogs(
     }
   }
 
+  // Get alternative RPC URL for retry logic (if available)
+  const alternativeRpc = hre ? getAlternativeRpcUrl(hre) : undefined;
+
   // If the range is small enough, do a single query
   if (toBlock - fromBlock <= maxBlockRange) {
-    return contract.queryFilter(filter, fromBlock, toBlock);
+    return withProviderRetry(
+      createProviderOperation(contract.runner as any, async (provider) => {
+        const contractWithProvider = new Contract(
+          await contract.getAddress(),
+          contract.interface,
+          provider
+        );
+        return contractWithProvider.queryFilter(filter, fromBlock, toBlock);
+      }),
+      alternativeRpc,
+      `Query events ${eventName} (blocks ${fromBlock}-${toBlock})`
+    );
   }
 
   // Otherwise, split into chunks and query in parallel
@@ -407,11 +473,22 @@ export async function getEventLogs(
 
   const chunkResults = await Promise.all(
     chunks.map((chunk) =>
-      contract.queryFilter(filter, chunk.from, chunk.to).catch((error) => {
+      withProviderRetry(
+        createProviderOperation(contract.runner as any, async (provider) => {
+          const contractWithProvider = new Contract(
+            await contract.getAddress(),
+            contract.interface,
+            provider
+          );
+          return contractWithProvider.queryFilter(filter, chunk.from, chunk.to);
+        }),
+        alternativeRpc,
+        `Query events ${eventName} (blocks ${chunk.from}-${chunk.to})`
+      ).catch((error) => {
         logger.error(
           `Error querying blocks ${chunk.from}-${chunk.to}: ${error.message}`
         );
-        return [];
+        return [] as (EventLog | Log)[];
       })
     )
   );
@@ -457,11 +534,21 @@ export async function getBlockParams(
     logger.info(`Using provided toBlock: ${toBlock}`);
   } else {
     // Fetch latest finalized block from the blockchain
+    const alternativeRpc = getAlternativeRpcUrl(hre);
+
     try {
       // First try to get the finalized block (for chains that support it)
-      const finalizedBlock = await provider
-        .getBlock("finalized")
-        .catch(() => provider.getBlock("latest"));
+      const finalizedBlock = await withProviderRetry(
+        createProviderOperation(provider, async (p) => {
+          try {
+            return await p.getBlock("finalized");
+          } catch {
+            return await p.getBlock("latest");
+          }
+        }),
+        alternativeRpc,
+        "Get finalized/latest block"
+      );
 
       if (!finalizedBlock || typeof finalizedBlock.number !== "number") {
         throw new Error("Unable to retrieve finalized block");
@@ -470,8 +557,12 @@ export async function getBlockParams(
       toBlock = finalizedBlock.number;
       logger.info(`Using latest finalized block: ${toBlock}`);
     } catch (error) {
-      // Fallback to latest as string if we can't get the number
-      const latestBlock = await provider.getBlockNumber();
+      // Fallback to latest block number if we can't get the block
+      const latestBlock = await withProviderRetry(
+        createProviderOperation(provider, (p) => p.getBlockNumber()),
+        alternativeRpc,
+        "Get latest block number"
+      );
       toBlock = latestBlock;
       logger.info(`Using latest block number: ${toBlock}`);
     }

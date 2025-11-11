@@ -1,6 +1,8 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import dotenv from "dotenv";
+import { getAlternativeRpcUrl } from "../utils/contracts";
+import { withProviderRetry, createProviderOperation } from "../utils/retry";
 
 dotenv.config();
 
@@ -23,14 +25,27 @@ task("get-proxy-admin", "Read the admin address from a transparent proxy contrac
     console.log(`Reading proxy admin for contract ${proxyAddress} on ${hre.network.name}...`);
 
     const provider = hre.ethers.provider;
+    const alternativeRpc = getAlternativeRpcUrl(hre);
 
     try {
       // Get the admin address from storage
-      const adminStorageData = await provider.getStorage(proxyAddress, ADMIN_SLOT);
+      const adminStorageData = await withProviderRetry(
+        createProviderOperation(provider, (p) =>
+          p.getStorage(proxyAddress, ADMIN_SLOT)
+        ),
+        alternativeRpc,
+        `Get storage at ${ADMIN_SLOT}`
+      );
       const adminAddress = "0x" + adminStorageData.slice(26); // Convert to address format
 
       // Get the implementation address from storage
-      const implementationStorageData = await provider.getStorage(proxyAddress, IMPLEMENTATION_SLOT);
+      const implementationStorageData = await withProviderRetry(
+        createProviderOperation(provider, (p) =>
+          p.getStorage(proxyAddress, IMPLEMENTATION_SLOT)
+        ),
+        alternativeRpc,
+        `Get storage at ${IMPLEMENTATION_SLOT}`
+      );
       const implementationAddress = "0x" + implementationStorageData.slice(26); // Convert to address format
 
       // Check if this looks like an address (correct length and non-zero)

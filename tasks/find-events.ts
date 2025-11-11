@@ -10,6 +10,7 @@ import {
   getBlockParams,
   getEventLogs,
   loadAbiFromFile,
+  getAlternativeRpcUrl,
 } from "../utils/contracts";
 import { EventData, processLog } from "../utils/events";
 
@@ -76,8 +77,11 @@ task("find-events", "Find events emitted by a smart contract")
       const contract = createContract(hre, contractAddress, contractAbi);
       const logs = await getEventLogs(contract, eventName, fromBlock, toBlock, hre);
 
+      // Get alternative RPC URL for retry logic
+      const alternativeRpc = getAlternativeRpcUrl(hre);
+
       const results: EventData[] = await Promise.all(
-        logs.map((log) => processLog(log, provider, eventName))
+        logs.map((log) => processLog(log, provider, eventName, alternativeRpc))
       );
 
       const outputPath = path.join(
