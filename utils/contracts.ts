@@ -3,10 +3,10 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import { Contract, EventLog, Log } from "ethers";
-import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE, SONIC_MAX_BLOCK_RANGE } from "./constants";
-import { ExplorerType, Explorers, Network, getRPCUrls } from "./networks";
+import { BLOCKSCOUT_MAX_BLOCK_RANGE, MAX_BLOCK_RANGE, SONIC_MAX_BLOCK_RANGE, RPCProviderType, RPC_MAX_BLOCK_RANGE } from "./constants";
+import { ExplorerType, Explorers, Network, getRPCUrls, getRPCProviderType } from "./networks";
 import { logger } from "./logger";
-import { withProviderRetry, withHttpRetry, createProviderOperation } from "./retry";
+import { withProviderRetry, withHttpRetry, createProviderOperation, isTimeoutError } from "./retry";
 
 export async function loadAbiFromFile(abiPath: string): Promise<any> {
   const abiJson = fs.readFileSync(path.resolve(abiPath), "utf8");
@@ -409,29 +409,28 @@ export async function getEventLogs(
   }
 
   const filter = contract.filters[eventName]();
-  
-  // Determine the appropriate block range limit based on the network explorer
+
+  // Determine the appropriate block range limit based on the RPC provider
   let maxBlockRange = MAX_BLOCK_RANGE;
-  
+  let providerType: RPCProviderType = RPCProviderType.Default;
+
   if (hre) {
     try {
-      const chainId = hre.network.config.chainId;
-      if (chainId) {
-        const explorerConfig = Explorers[chainId as Network];
-        if (explorerConfig && explorerConfig.type === ExplorerType.Blockscout) {
-          maxBlockRange = BLOCKSCOUT_MAX_BLOCK_RANGE;
-          logger.info(`Using Blockscout-specific block range limit of ${BLOCKSCOUT_MAX_BLOCK_RANGE}`, 1);
-        }
-        
-        // Apply Sonic-specific block range limit
-        if (chainId === Network.Sonic) {
-          maxBlockRange = SONIC_MAX_BLOCK_RANGE;
-          logger.info(`Using Sonic-specific block range limit of ${SONIC_MAX_BLOCK_RANGE}`, 1);
-        }
+      // Get the RPC URL from the provider
+      const provider = hre.ethers.provider;
+      const providerUrl = (provider as any)._getConnection?.().url || (provider as any).connection?.url || (hre.network.config as any).url;
+
+      if (providerUrl) {
+        const detectedType = getRPCProviderType(providerUrl);
+        providerType = detectedType as RPCProviderType;
+        maxBlockRange = RPC_MAX_BLOCK_RANGE[providerType];
+        logger.info(`Detected ${providerType} RPC provider, using block range limit of ${maxBlockRange}`, 1);
+      } else {
+        logger.info(`Could not determine RPC provider, using default block range of ${MAX_BLOCK_RANGE}`, 1);
       }
     } catch (error) {
-      // If there's any error determining the explorer type, fall back to default range
-      logger.info(`Could not determine explorer type, using default block range of ${MAX_BLOCK_RANGE}`, 1);
+      // If there's any error determining the RPC type, fall back to default range
+      logger.info(`Error determining RPC provider type, using default block range of ${MAX_BLOCK_RANGE}`, 1);
     }
   }
 
@@ -471,9 +470,49 @@ export async function getEventLogs(
 
   logger.info(`Querying ${chunks.length} chunks of blocks in parallel...`, 1);
 
-  const chunkResults = await Promise.all(
-    chunks.map((chunk) =>
-      withProviderRetry(
+  // Progress tracking
+  const progressStats = {
+    total: chunks.length,
+    completed: 0,
+    failed: 0,
+    errors: new Map<string, number>(), // Error type -> count
+  };
+
+  /**
+   * Update and display progress in real-time
+   */
+  const updateProgress = () => {
+    const errorSummary = Array.from(progressStats.errors.entries())
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(", ");
+
+    const statusLine = `\rQuerying chunks: ${progressStats.completed}/${progressStats.total} completed, ${progressStats.failed} failed${
+      errorSummary ? ` | Errors: [${errorSummary}]` : ""
+    }`;
+
+    process.stdout.write(statusLine);
+  };
+
+  /**
+   * Categorize error type for tracking
+   */
+  const categorizeError = (error: any): string => {
+    if (isTimeoutError(error)) return "timeout";
+    const message = error.message?.toLowerCase() || "";
+    if (message.includes("rate limit") || message.includes("429")) return "rate-limit";
+    if (message.includes("too many requests")) return "rate-limit";
+    return "other";
+  };
+
+  /**
+   * Helper function to query a single chunk with automatic re-chunking on timeout
+   */
+  const queryChunkWithRetry = async (
+    chunk: { from: number; to: number },
+    currentMaxRange: number
+  ): Promise<(EventLog | Log)[]> => {
+    try {
+      const result = await withProviderRetry(
         createProviderOperation(contract.runner as any, async (provider) => {
           const contractWithProvider = new Contract(
             await contract.getAddress(),
@@ -484,18 +523,67 @@ export async function getEventLogs(
         }),
         alternativeRpc,
         `Query events ${eventName} (blocks ${chunk.from}-${chunk.to})`
-      ).catch((error) => {
-        logger.error(
-          `Error querying blocks ${chunk.from}-${chunk.to}: ${error.message}`
+      );
+
+      // Success - update progress
+      progressStats.completed++;
+      updateProgress();
+      return result;
+    } catch (error: any) {
+      // If it's a timeout error and the chunk is large enough to split, retry with smaller chunks
+      const chunkSize = chunk.to - chunk.from + 1;
+      const reducedMaxRange = Math.floor(currentMaxRange / 10);
+
+      if (isTimeoutError(error) && chunkSize > reducedMaxRange && reducedMaxRange >= 10) {
+        // Split the failed chunk into smaller chunks
+        const subChunks: Array<{ from: number; to: number }> = [];
+        let current = chunk.from;
+        while (current <= chunk.to) {
+          const end = Math.min(current + reducedMaxRange - 1, chunk.to);
+          subChunks.push({ from: current, to: end });
+          current = end + 1;
+        }
+
+        // Update total count for sub-chunks
+        progressStats.total += subChunks.length - 1;
+
+        // Recursively query each sub-chunk
+        const subResults = await Promise.all(
+          subChunks.map((subChunk) => queryChunkWithRetry(subChunk, reducedMaxRange))
         );
-        return [] as (EventLog | Log)[];
-      })
-    )
+
+        return subResults.flat();
+      }
+
+      // Failed - update progress
+      const errorType = categorizeError(error);
+      progressStats.failed++;
+      progressStats.errors.set(errorType, (progressStats.errors.get(errorType) || 0) + 1);
+      progressStats.completed++;
+      updateProgress();
+
+      return [] as (EventLog | Log)[];
+    }
+  };
+
+  const chunkResults = await Promise.all(
+    chunks.map((chunk) => queryChunkWithRetry(chunk, maxBlockRange))
   );
 
-  // Flatten results from all chunks
+  // Clear progress line and show final summary
+  process.stdout.write("\n");
   const allLogs = chunkResults.flat();
-  logger.info(`Retrieved ${allLogs.length} total events across all chunks`, 1);
+
+  // Final summary
+  logger.success(
+    `Retrieved ${allLogs.length} total events from ${progressStats.completed} chunks`
+  );
+  if (progressStats.failed > 0) {
+    const errorDetails = Array.from(progressStats.errors.entries())
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(", ");
+    logger.warn(`${progressStats.failed} chunks failed: ${errorDetails}`);
+  }
 
   return allLogs;
 }

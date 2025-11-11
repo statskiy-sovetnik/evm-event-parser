@@ -164,3 +164,26 @@ export const Explorers: { [K in Network]: ExplorerConfig } = {
     url: "https://explorer.etherlink.com",
   },
 }
+
+/**
+ * Detect RPC provider type from URL
+ * @param rpcUrl - The RPC URL to analyze
+ * @returns The detected provider type
+ */
+export function getRPCProviderType(rpcUrl: string): string {
+  const url = rpcUrl.toLowerCase();
+
+  if (url.includes("alchemy.com") || url.includes("alchemyapi.io")) {
+    return "alchemy";
+  }
+
+  if (url.includes("blockscout")) {
+    return "blockscout";
+  }
+
+  if (url.includes("sonic")) {
+    return "sonic";
+  }
+
+  return "default";
+}

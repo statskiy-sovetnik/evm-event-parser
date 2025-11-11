@@ -6,6 +6,24 @@ import { logger } from "./logger";
  * Retry configuration
  */
 const RETRY_DELAY_MS = 1000; // 1 second delay before retry
+const INCREASED_TIMEOUT_MS = 30000; // 30 seconds for timeout retry
+
+/**
+ * Check if an error is a timeout error
+ */
+export function isTimeoutError(error: any): boolean {
+  if (!error) return false;
+  const message = error.message?.toLowerCase() || "";
+  const code = error.code?.toUpperCase() || "";
+  return (
+    code === "TIMEOUT" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNABORTED" ||
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("connect timeout")
+  );
+}
 
 /**
  * Delay helper function
@@ -27,19 +45,51 @@ export async function withProviderRetry<T>(
   alternativeRpcUrl: string | undefined,
   operationName: string
 ): Promise<T> {
+  // Extract the original provider from the operation if possible
+  const originalProvider = (operation as any).provider;
+
   try {
     // Try with the current provider (primary RPC)
-    const provider = operation.length > 0 ? (operation as any).provider : undefined;
-    const result = await operation(provider);
+    const result = await operation(originalProvider);
     return result;
   } catch (primaryError: any) {
+    // Check if this is a timeout error - if so, retry with increased timeout on same provider
+    if (isTimeoutError(primaryError) && originalProvider) {
+      logger.warn(`${operationName} failed with timeout: ${primaryError.message}`);
+      logger.info(`Retrying ${operationName} with increased timeout (${INCREASED_TIMEOUT_MS}ms)...`);
+
+      await delay(RETRY_DELAY_MS);
+
+      try {
+        // Create a new provider with the same RPC but increased timeout
+        const providerUrl = originalProvider._getConnection?.().url || originalProvider.connection?.url;
+        if (providerUrl) {
+          const retryProvider = new ethers.JsonRpcProvider(providerUrl, undefined, {
+            staticNetwork: true,
+          });
+          // Increase the timeout
+          const connection = retryProvider._getConnection();
+          if (connection) {
+            connection.timeout = INCREASED_TIMEOUT_MS;
+          }
+
+          const result = await operation(retryProvider);
+          logger.success(`${operationName} succeeded with increased timeout`);
+          return result;
+        }
+      } catch (timeoutRetryError: any) {
+        logger.warn(`${operationName} still failed with increased timeout: ${timeoutRetryError.message}`);
+        // Continue to alternative RPC retry below
+      }
+    }
+
     // If no alternative RPC is available, throw the error
     if (!alternativeRpcUrl) {
       logger.error(`${operationName} failed (no alternative RPC available): ${primaryError.message}`);
       throw primaryError;
     }
 
-    // Log the primary failure and retry attempt
+    // Log the primary failure and retry attempt with alternative RPC
     logger.warn(`${operationName} failed with primary RPC: ${primaryError.message}`);
     logger.info(`Retrying ${operationName} with alternative RPC after ${RETRY_DELAY_MS}ms...`);
 
